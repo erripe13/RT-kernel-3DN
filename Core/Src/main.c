@@ -26,48 +26,64 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-SemaphoreHandle_t xSemaphore;
-
+//SemaphoreHandle_t xSemaphore;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define STACK_SIZE 256
+#define TASK1_PRIORITY 1
+#define TASK2_PRIORITY 2
+#define TASK1_DELAY 1
+#define TASK2_DELAY 2
+
+
 int __io_putchar(int ch) {
 	HAL_UART_Transmit(&huart1, (uint8_t*) &ch, 1, HAL_MAX_DELAY);
 	return ch;
 }
 
-void BlinkTask(void *pvParameters) {
+QueueHandle_t xQueue;
 
+void BlinkTask(void *pvParameters) {
 	while (1) {
 		HAL_GPIO_TogglePin(GPIOI, GPIO_PIN_1);
-		printf("blink\n");
+		printf("blinkyyyy\n");
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 }
 void taskGive(void *pvParameters) {
+	TickType_t delay = pdMS_TO_TICKS(100);
+
 	while (1) {
-		printf("donne semaphore ?\n");
-		xSemaphoreGive(xSemaphore);
-		printf("donne semaphore ok\n");
-		vTaskDelay(pdMS_TO_TICKS(100));
+		delay = xTaskGetTickCount();
+		printf("Envoi valeur timer : %lu\n", delay);
+		if (xQueueSend(xQueue, &delay, pdMS_TO_TICKS(100)) != pdPASS) {
+			printf("Echec d'envoi dans la queue\n");
+		}
+
+		vTaskDelay(delay);
+		delay += pdMS_TO_TICKS(100);
 	}
 }
 
 void taskTake(void *pvParameters) {
-    while (1) {
-        printf("prend semaphore ?\n");
-        if (xSemaphoreTake(xSemaphore, pdMS_TO_TICKS(1000)) == pdTRUE) {
-            printf("prend semaphore ok\n");
-        } else {
-            printf("echec acquisition semaphore : reset\n");
-            NVIC_SystemReset();
-        }
-    }
+	TickType_t receivedValue = 0;
+
+	while (1) {
+		if (xQueueReceive(xQueue, &receivedValue, pdMS_TO_TICKS(1000)) == pdPASS) {
+			printf("Valeur recue : %lu\n", receivedValue);
+		} else {
+			printf("Timeout reception\n");
+			NVIC_SystemReset();
+		}
+	}
 }
 /* USER CODE END PD */
 
@@ -122,17 +138,26 @@ int main(void) {
 	MX_GPIO_Init();
 	MX_USART1_UART_Init();
 	/* USER CODE BEGIN 2 */
-	xSemaphore = xSemaphoreCreateBinary();
-	if(xTaskCreate(BlinkTask, "BlinkTask", 256, NULL, 3, NULL) != pdPASS) {
+	//xSemaphore = xSemaphoreCreateBinary();
+	TaskHandle_t taskTakeHandle;
+
+	xQueue = xQueueCreate(10, sizeof(TickType_t));
+	if (xQueue == NULL) {
+		printf("echec queue\n");
+		Error_Handler();
+	}
+
+	if (xTaskCreate(BlinkTask, "BlinkTask", 256, NULL, 3, NULL) != pdPASS) {
 		printf("echec creation blinktask\r\n");
 		Error_Handler();
 	}
-	if(xTaskCreate(taskGive, "TaskGive", 256, NULL, 2, NULL) != pdPASS) {
-		printf("echec creation give\r\n");
+	if (xTaskCreate(taskTake, "TaskTake", 256, NULL, 1, &taskTakeHandle) != pdPASS) {
+		printf("echec creation take\n");
 		Error_Handler();
 	}
-	if(xTaskCreate(taskTake, "TaskTake", 256, NULL, 1, NULL) != pdPASS) {
-		printf("echec creation give\n");
+	if (xTaskCreate(taskGive, "TaskGive", 256, (void*) taskTakeHandle, 2,
+	NULL) != pdPASS) {
+		printf("echec creation give\r\n");
 		Error_Handler();
 	}
 	vTaskStartScheduler();
