@@ -59,12 +59,15 @@ void taskGive(void *pvParameters) {
 }
 
 void taskTake(void *pvParameters) {
-	while (1) {
-		printf("prend semaphore ?\n");
-		if (xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
-			printf("prend semaphore ok\n");
-		}
-	}
+    while (1) {
+        printf("prend semaphore ?\n");
+        if (xSemaphoreTake(xSemaphore, pdMS_TO_TICKS(1000)) == pdTRUE) {
+            printf("prend semaphore ok\n");
+        } else {
+            printf("echec acquisition semaphore : reset\n");
+            NVIC_SystemReset();
+        }
+    }
 }
 /* USER CODE END PD */
 
