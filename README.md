@@ -56,7 +56,7 @@ L’objectif de ce TP sur cinq séances est de mettre en place quelques applicat
 
 ##### 1.4 Queues
 7. Expliquez comment envoyer et recevoir des valeurs dans une queue.  
-   **Réponse :**
+   **Réponse :etst**
 
 ##### 1.5 Réentrance et exclusion mutuelle
 8. Expliquez le problème observé dans le code fourni et proposez une solution avec un sémaphore Mutex.  
