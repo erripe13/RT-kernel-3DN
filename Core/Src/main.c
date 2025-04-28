@@ -19,7 +19,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include "semphr.h"
 #include "shell.h"
 /* USER CODE END Includes */
 
@@ -31,7 +30,7 @@
 /* USER CODE BEGIN PD */
 #define STACK_SIZE 256
 #define TASK1_PRIORITY 1
-#define TASK2_PRIORITY 2
+#define TASK2_PRIORITY 1
 #define SHELL_TASK_PRIORITY 1
 #define QUEUE_LENGTH 10
 #define QUEUE_WAIT_TIME pdMS_TO_TICKS(100)
@@ -46,7 +45,7 @@
 QueueHandle_t xQueue;
 SemaphoreHandle_t xMutex;
 TaskHandle_t blinkTaskHandle;
-TickType_t ledPeriod = 0;  // ms
+TickType_t ledPeriod = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,6 +66,14 @@ int __io_putchar(int ch) {
 	HAL_UART_Transmit(&huart1, (uint8_t*) &ch, 1, HAL_MAX_DELAY);
 	return ch;
 }
+
+char uart_read() {
+	char c;
+	HAL_UART_Receive(&huart1, (uint8_t*)&c, 1, HAL_MAX_DELAY);
+	vTaskDelay(pdMS_TO_TICKS(1));
+	return c & 0x7F;
+}
+
 
 int fonction(int argc, char **argv) {
     printf("Appel de fonction avec %d argument(s) :\r\n", argc);
@@ -119,8 +126,8 @@ void TaskShell(void *pvParameters) {
 	shell_init();
 	shell_add('f', fonction, "Fonction test shell");
 	shell_add('l', led, "LED clignotement (ex: led 500)");
-	shell_add('s', spam, "Affiche un message N fois (ex: spam Hello 3)");
-	shell_run();
+	shell_add('s', spam, "Affiche un message N fois");
+	shell_run();  // Bloquant, mais compatible via uart_read() patché
 }
 /* USER CODE END 0 */
 
@@ -145,50 +152,18 @@ int main(void)
   xQueue = xQueueCreate(QUEUE_LENGTH, sizeof(TickType_t));
   configASSERT(xQueue != NULL);
 
-  // === Tâche de clignotement shell-compatible ===
   BaseType_t ret;
-  ret = xTaskCreate(BlinkTask, "BlinkTask", STACK_SIZE, NULL, 3, &blinkTaskHandle);
+  ret = xTaskCreate(BlinkTask, "BlinkTask", STACK_SIZE, NULL, 2, &blinkTaskHandle);
   configASSERT(ret == pdPASS);
 
-  // === Shell interactif FreeRTOS ===
   ret = xTaskCreate(TaskShell, "Shell", STACK_SIZE, NULL, SHELL_TASK_PRIORITY, NULL);
   configASSERT(ret == pdPASS);
 
-
-  // === Code d’origine désactivé pour ce TP : ===
-
-  /*
-  // Tâche de clignotement "brute", sans commande shell
-  if (xTaskCreate(BlinkTask, "BlinkTask", STACK_SIZE, NULL, 3, NULL) != pdPASS) {
-    printf("echec creation blinktask\r\n");
-    Error_Handler();
-  }
-
-  // Communication inter-tâche avec xQueue (Take + Give)
-  if (xTaskCreate(taskTake, "TaskTake", STACK_SIZE, NULL, 1, &taskTakeHandle) != pdPASS) {
-    printf("echec creation take\n");
-    Error_Handler();
-  }
-  if (xTaskCreate(taskGive, "TaskGive", STACK_SIZE, (void*) taskTakeHandle, 2, NULL) != pdPASS) {
-    printf("echec creation give\r\n");
-    Error_Handler();
-  }
-
-  // Tâches concurrentes avec différents delays (TASK1_DELAY et TASK2_DELAY)
-  ret = xTaskCreate(task_bug, "Tache 1", STACK_SIZE, (void*) TASK1_DELAY, TASK1_PRIORITY, NULL);
-  configASSERT(pdPASS == ret);
-  ret = xTaskCreate(task_bug, "Tache 2", STACK_SIZE, (void*) TASK2_DELAY, TASK2_PRIORITY, NULL);
-  configASSERT(pdPASS == ret);
-  */
-
-  // === Lancement du scheduler ===
   vTaskStartScheduler();
-
   /* USER CODE END 2 */
 
-  MX_FREERTOS_Init();  // Generated function (inutile ici car on gère nos tâches)
-
-  osKernelStart();  // Normalement jamais atteint
+  MX_FREERTOS_Init();
+  osKernelStart();
 
   /* USER CODE BEGIN WHILE */
   while (1) {
@@ -199,10 +174,6 @@ int main(void)
   /* USER CODE END 3 */
 }
 
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -239,14 +210,12 @@ void SystemClock_Config(void)
   }
 }
 
-/* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim->Instance == TIM1) {
 		HAL_IncTick();
 	}
 }
-/* USER CODE END 4 */
 
 void Error_Handler(void)
 {
@@ -254,9 +223,9 @@ void Error_Handler(void)
   while (1) {
   }
 }
+
 #ifdef  USE_FULL_ASSERT
 void assert_failed(uint8_t *file, uint32_t line)
 {
-  /* TODO : Ajouter message si besoin */
 }
 #endif
