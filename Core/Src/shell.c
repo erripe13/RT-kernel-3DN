@@ -50,7 +50,7 @@ static int sh_help(int argc, char ** argv) {
 void shell_init() {
 	int size = 0;
 
-	size = snprintf (print_buffer, BUFFER_SIZE, "\r\n\r\n===== Monsieur Shell v0.2 =====\r\n");
+	size = snprintf (print_buffer, BUFFER_SIZE, "\r\n\r\n===== Monsieur Hell v1 =====\r\n");
 	uart_write(print_buffer, size);
 
 	shell_add('h', sh_help, "Help");

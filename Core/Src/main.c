@@ -113,12 +113,12 @@ int spam(int argc, char **argv) {
 }
 
 void BlinkTask(void *pvParameters) {
-    volatile uint32_t stackFiller[STACK_SIZE * 2];
-
-    for (int i = 0; i > STACK_SIZE * 2; i++) {
-		stackFiller[i] = i;
-		printf("i = %d", i);
-	}
+//    volatile uint32_t stackFiller[STACK_SIZE * 2];
+//
+//    for (int i = 0; i > STACK_SIZE * 2; i++) {
+//		stackFiller[i] = i;
+//		printf("i = %d", i);
+//	}
     while (1) {
         if (ledPeriod > 0) {
             HAL_GPIO_TogglePin(GPIOI, GPIO_PIN_1);
