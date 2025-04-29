@@ -90,7 +90,7 @@ L’objectif de ce TP sur cinq séances est de mettre en place quelques applicat
 
 ##### 3.2 Gestion des piles
 4. Expliquez l’intérêt des hooks dans FreeRTOS.  
-   **Réponse :**
+   **Réponse :Les hooks sont des fonctions appelées automatiquement par FreeRTOS dans des situations spécifiques, comme l'inactivité (`IdleHook`), les dépassements de pile (`StackOverflowHook`), ou les échecs d'allocation mémoire (`MallocFailedHook`). Ils permettent de personnaliser le comportement du système en fonction des besoins.**
 
 ##### 3.3 Statistiques dans l’IDE
 5. Comment afficher l’utilisation de la pile et du CPU dans STM32CubeIDE ?  
