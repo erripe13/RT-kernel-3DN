@@ -60,19 +60,19 @@ L’objectif de ce TP sur cinq séances est de mettre en place quelques applicat
 
 ##### 1.5 Réentrance et exclusion mutuelle
 8. Expliquez le problème observé dans le code fourni et proposez une solution avec un sémaphore Mutex.  
-   **Réponse :**
+   **Réponse : On ne peut pas utiliser 2 instances de printf en même temps sans la réentrance**
 
 ---
 
 #### 2. On joue avec le Shell
 1. Que se passe-t-il si l’on ne respecte pas les priorités décrites ?  
-   **Réponse :**
+   **Réponse :On risque d'être plus prioritaire que les taches assignées au système**
 
 2. Écrivez une fonction `led()` pour contrôler le clignotement de la LED.  
-   **Réponse :**
+   **Réponse :Commit: building shell led command**
 
 3. Écrivez une fonction `spam()` pour afficher du texte dans la liaison série.  
-   **Réponse :**
+   **Réponse :Commit: added spam task functionnality to shell**
 
 ---
 
@@ -80,13 +80,13 @@ L’objectif de ce TP sur cinq séances est de mettre en place quelques applicat
 
 ##### 3.1 Gestion du tas
 1. Quel est le nom de la zone réservée à l’allocation dynamique ?  
-   **Réponse :**
+   **Réponse :La HEAP**
 
 2. Est-ce géré par FreeRTOS ou la HAL ?  
-   **Réponse :**
+   **Réponse :FreeRTOS**
 
 3. Expliquez les relevés de mémoire RAM et Flash après modification de la taille du tas.  
-   **Réponse :**
+   **Réponse :Au départ nous avions une utilisation de la RAM de 19kB et lors du dépassement de 15,360kB nous sommes en erreur car on a dépassé la taille de la HEAP. Le problème résolu après la modification de la taille de la HEAP**
 
 ##### 3.2 Gestion des piles
 4. Expliquez l’intérêt des hooks dans FreeRTOS.  
