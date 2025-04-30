@@ -121,6 +121,21 @@ int spam(int argc, char **argv) {
     return 0;
 }
 
+int stats(int argc, char **argv) {
+    char buffer[512];
+
+    printf("=== Liste des taches ===\r\n");
+    vTaskList(buffer);
+    printf("%s\r\n", buffer);
+
+    printf("=== Statistiques d'execution ===\r\n");
+    vTaskGetRunTimeStats(buffer);
+    printf("%s\r\n", buffer);
+
+    return 0;
+}
+
+
 void BlinkTask(void *pvParameters) {
 //    volatile uint32_t stackFiller[STACK_SIZE * 2];
 //
@@ -143,6 +158,7 @@ void TaskShell(void *pvParameters) {
 	shell_add('f', fonction, "Fonction test shell");
 	shell_add('l', led, "LED clignotement (ex: led 500)");
 	shell_add('s', spam, "Affiche un message N fois");
+	shell_add('t', stats, "Affiche les stats d'exécution des tâches");
 	shell_run();  // Bloquant, mais compatible via uart_read() patché
 }
 
