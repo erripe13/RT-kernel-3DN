@@ -1,124 +1,190 @@
-# RT-kernel-3DN
-TP noyau temps réel 3DN ENSEA
-
 ## TP FreeRTOS
-Chaque question est reliée à un commit du git.
+
+La plupart des questions sont liées à un commit du repo, dans la mesure du possible.
+
+L'essentiel des commits détaillés sont sur la branche "pierre" mais il serait erroné de croire que l'individu du même nom a été le seul à travailler. https://github.com/erripe13/RT-kernel-3DN/commits/pierre
+
+Note : à la fin du projet la branche a été mergée dans le main en même temps que l'ajout de la fonctionnalité de statistiques dans le shell.
+
 ### Objectif
-L’objectif de ce TP sur cinq séances est de mettre en place quelques applications sous FreeRTOS en utilisant la carte NUCLEO-G431RB conçue autour du microcontrôleur STM32G431RBT6.
+
+L’objectif de ce TP sur cinq séances est de mettre en place quelques applications sous FreeRTOS en utilisant la carte STM32F746G-DISCO conçue autour du microcontrôleur STM32F746G.
 
 ---
 
-### Questions et réponses
+### 0. (Re)prise en main
 
-#### 0. (Re)prise en main
+#### 0.1 Premiers pas
+
 1. Où se situe le fichier `main.c` ?  
-   **Réponse : Le main se situe dans /core/source**
+   **Réponse : Le fichier `main.c` se situe dans `/Core/Src`.**
 
-2. À quoi servent les commentaires indiquant `BEGIN` et `END` ?  
-   **Réponse : Ces commentaires permettre connaitre les zones ou l'on peut écrire sans que cubeide ne le supprime lors de sa génération de code**
+2. À quoi servent les commentaires `/* USER CODE BEGIN */` et `/* USER CODE END */` ?  
+   **Réponse : Ces commentaires indiquent les zones où l'on peut écrire du code sans que CubeMX ne les écrase lors de la régénération.**
 
-3. Quels sont les paramètres à passer à `HAL_Delay` et `HAL_GPIO_TogglePin` ?  
-   **Réponse : HAL_Delay recoit un uint32_t et HAL_GPIO_TogglePin recoit le port et le pin du GPIO**
+3. Quels sont les paramètres à passer à `HAL_Delay()` et `HAL_GPIO_TogglePin()` ?  
+   **Réponse : `HAL_Delay()` prend un `uint32_t` correspondant à une durée en millisecondes. `HAL_GPIO_TogglePin()` prend un port (ex: GPIOI) et un numéro de pin (ex: GPIO_PIN_1).**
 
 4. Dans quel fichier les ports d’entrée/sorties sont-ils définis ?  
-   **Réponse : Le fichier .ioc permet de configurer les entrées sortie**
+   **Réponse : Ils sont définis dans `main.h` à partir de la configuration du fichier `.ioc`.**
 
-5. Écrivez un programme simple permettant de faire clignoter la LED.  
-   **Commit : blink no rtos**
+5. Écrivez un programme simple permettant de faire clignoter la LED (PI1).  
+   **Commit : blink no rtos** – *vérif. prof. OK*
 
-6. Modifiez le programme pour que la LED s’allume lorsque le bouton USER est appuyé.  
-   **Commit : blink no rtos**
+6. Modifiez le programme pour que la LED s’allume lorsque le bouton USER (PI11) est appuyé.  
+   **Commit : blink no rtos** – *vérif. prof. OK*
 
 ---
 
-#### 1. FreeRTOS, tâches et sémaphores
+### 1. FreeRTOS, tâches et sémaphores
 
-##### 1.1 Tâche simple
-1. Quels paramètres de FreeRTOS vous paraissent pertinents ? En quoi le paramètre `TOTAL_HEAP_SIZE` est-il important ?  
-   **Réponse : MAX_PROPERTIES, MINIMAL_STACK_SIZE et TOTAL_HEAP_SIZE. TOTAL_HEAP_SIZE est crucial puisqu'il définit la mémoire dynamique(heap)**
+#### 1.1 Tâche simple
+
+1. Quels paramètres de FreeRTOS vous paraissent pertinents ? En quoi `configTOTAL_HEAP_SIZE` est-il important ?  
+   **Réponse : `configMAX_PRIORITIES`, `configMINIMAL_STACK_SIZE`, `configTOTAL_HEAP_SIZE`. Ce dernier définit la mémoire allouée dynamiquement aux tâches, files, sémaphores, etc.**
 
 2. Quel est le rôle de la macro `portTICK_PERIOD_MS` ?  
-   **Réponse :La macro représente la durée d'un tick du système en ms.**
+   **Réponse : Elle permet de convertir un délai exprimé en millisecondes vers des ticks système.**
 
-##### 1.2 Sémaphores pour la synchronisation
-3. Expliquez le fonctionnement des tâches `taskGive` et `taskTake`.  
-   **Réponse : taskGive donne un sémaphore. Elle utilise la fonction xSemaphoreGive() pour libérer le semaphore. taskTake à pour rôle de de prendre le sémaphore. Si le sémaphore n'est pas disponible la tache attend**
+3. Créez une tâche faisant clignoter la LED toutes les 100 ms avec un affichage série.  
+   *vérif. prof. OK* — (*cf. commit associé à la tâche*)
 
-4. Ajoutez un mécanisme de gestion d’erreur lors de l’acquisition du sémaphore.  
-   **Commit :  semaphore "watchdog"**
+#### 1.2 Sémaphores pour la synchronisation
 
-5. Expliquez les changements observés après modification des priorités.  
-   **Réponse :En changeant les priorités on observe que si la priorité de la tache give est inferieure, alors la tache ne donne pas le sémaphore et le µc se reset. A contrario si la tache a une priorité égale à l'autre alors, le sémaphore est donné.**
+4. Créez deux tâches `taskGive` et `taskTake` synchronisées via un sémaphore.  
+   **Réponse : `taskGive` utilise `xSemaphoreGive()` pour libérer un sémaphore toutes les 100 ms. `taskTake` attend ce sémaphore avec `xSemaphoreTake()`. Chaque tâche affiche un message avant et après l’appel.**  
+   *vérif. prof. OK*
 
-##### 1.3 Notification
-6. Modifiez le code pour utiliser des notifications de tâches à la place des sémaphores.  
-   **Commit : task notifications + queue for delay value**
+5. Ajoutez une gestion d'erreur si `taskTake` ne reçoit pas le sémaphore sous 1 seconde.  
+   **Commit : semaphore "watchdog"** – *vérif. prof. OK*
 
-##### 1.4 Queues
-7. Expliquez comment envoyer et recevoir des valeurs dans une queue.  
-   **Réponse :etst**
+6. Ajoutez 100 ms au délai de `taskGive` à chaque itération et observez les conséquences.  
+   *vérif. prof. OK*
 
-##### 1.5 Réentrance et exclusion mutuelle
-8. Expliquez le problème observé dans le code fourni et proposez une solution avec un sémaphore Mutex.  
-   **Réponse : On ne peut pas utiliser 2 instances de printf en même temps sans la réentrance**
+7. Changez les priorités des tâches et expliquez l’impact.  
+   **Réponse : Lorsque `taskGive` a une priorité trop basse, elle ne libère plus le sémaphore à temps. Cela provoque un reset logiciel. Si la priorité est suffisante, la tâche fonctionne normalement.**
+
+#### 1.3 Notifications
+
+8. Remplacez les sémaphores par des notifications de tâches.  
+   **Commit : task notifications + queue for delay value** – *vérif. prof. OK*
+
+#### 1.4 Queues
+
+9. Modifiez `taskGive` pour envoyer la valeur d’un timer dans une queue. `taskTake` la lit et l’affiche.  
+   *vérif. prof. OK* — (*cf. commit task notifications + queue for delay value*)
+
+#### 1.5 Réentrance et exclusion mutuelle
+
+10. Recopiez le code `task_bug()` fourni et observez les sorties.  
+       vérif. prof. OK*
+
+11. Expliquez le problème observé.  
+       **Réponse : L'utilisation simultanée de `printf()` par plusieurs tâches entraîne des collisions car la fonction n’est pas réentrante.**
+
+12. Proposez une solution avec un mutex.  
+       **Réponse : Encadrer les appels à `printf()` avec `xSemaphoreTake()` / `xSemaphoreGive()` sur un sémaphore mutex créé avec `xSemaphoreCreateMutex()`.**
+
+
 
 ---
 
-#### 2. On joue avec le Shell
-1. Que se passe-t-il si l’on ne respecte pas les priorités décrites ?  
-   **Réponse :On risque d'être plus prioritaire que les taches assignées au système**
+### 2. On joue avec le Shell
 
-2. Écrivez une fonction `led()` pour contrôler le clignotement de la LED.  
-   **Réponse :Commit: building shell led command**
+1. Terminez l’intégration du shell commencé en TD.  
+   **Réponse : Le shell a été intégré avec gestion de commande via une file. Les priorités des interruptions ont été ajustées selon les consignes (USART1 priorité 5).**  
+   *vérif. prof. OK*
 
-3. Écrivez une fonction `spam()` pour afficher du texte dans la liaison série.  
-   **Réponse :Commit: added spam task functionnality to shell**
+2. Que se passe-t-il si l’on ne respecte pas les priorités décrites précédemment ?  
+   **Réponse : Si l’USART1 a une priorité plus élevée que `configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY`, elle ne pourra pas appeler les primitives FreeRTOS, ce qui casse le fonctionnement du shell.**
+
+3. Écrivez une fonction `led()` permettant de faire clignoter la LED.  
+   **Réponse : La fonction `led()` crée une tâche de clignotement, et utilise une queue pour transmettre la période de clignotement depuis le shell. Une valeur de 0 éteint la LED.**  
+   **Commit : building shell led command** – *vérif. prof. OK*
+
+4. Écrivez une fonction `spam()` qui affiche du texte dans la liaison série.  
+   **Réponse : La fonction `spam()` crée une tâche affichant un message périodique. Les arguments permettent de définir le texte et le nombre d’occurrences.**  
+   **Commit : added spam task functionnality to shell** – *vérif. prof. OK*
 
 ---
 
-#### 3. Debug, gestion d’erreur et statistiques
+### 3. Debug, gestion d’erreur et statistiques
 
-##### 3.1 Gestion du tas
+#### 3.1 Gestion du tas
+
 1. Quel est le nom de la zone réservée à l’allocation dynamique ?  
-   **Réponse :La HEAP**
+   **Réponse : La heap.**
 
-2. Est-ce géré par FreeRTOS ou la HAL ?  
-   **Réponse :FreeRTOS**
+2. Est-ce géré par FreeRTOS ou par la HAL ?  
+   **Réponse : Par FreeRTOS.**
 
-3. Expliquez les relevés de mémoire RAM et Flash après modification de la taille du tas.  
-   **Réponse :Au départ nous avions une utilisation de la RAM de 19kB et lors du dépassement de 15,360kB nous sommes en erreur car on a dépassé la taille de la HEAP. Le problème résolu après la modification de la taille de la HEAP**
+3. Ajoutez de la gestion d’erreur sur toutes les fonctions critiques.  
+   **Réponse : Les appels critiques (xTaskCreate, malloc...) sont vérifiés via `configASSERT` ou test de retour, et redirigent vers `Error_Handler()`.**  
+   *vérif. prof. OK*
 
-##### 3.2 Gestion des piles
-4. Expliquez l’intérêt des hooks dans FreeRTOS.  
-   **Réponse :Les hooks sont des fonctions appelées automatiquement par FreeRTOS dans des situations spécifiques, comme l'inactivité (`IdleHook`), les dépassements de pile (`StackOverflowHook`), ou les échecs d'allocation mémoire (`MallocFailedHook`). Ils permettent de personnaliser le comportement du système en fonction des besoins.**
+4. Notez la mémoire RAM et Flash utilisée (1re config).  
+   **Réponse : 19 kB de RAM utilisés avant saturation de la heap.**
 
-##### 3.3 Statistiques dans l’IDE
-5. Comment afficher l’utilisation de la pile et du CPU dans STM32CubeIDE ?  
+5. Créez des tâches jusqu’à provoquer une erreur d’allocation.  
+   *vérif. prof. OK*
+
+6. Notez la nouvelle utilisation mémoire.  
+   **Réponse : On ne peut pas voir la différence dans le build analyzer statique car le remplissage a lieu à l'exécution.**
+
+7. Augmentez la `TOTAL_HEAP_SIZE` et testez.  
+   *vérif. prof. OK*
+
+8. Notez la nouvelle utilisation mémoire.  
+   **Réponse : Après augmentation, les tâches s’exécutent à nouveau.**
+
+#### 3.2 Gestion des piles
+
+1. Lisez la doc FreeRTOS sur les Stack Overflow.  
+   *vérif. prof. OK*
+
+2. Activez `CHECK_FOR_STACK_OVERFLOW` dans CubeMX.  
+   *vérif. prof. OK*
+
+3. Écrivez la fonction `vApplicationStackOverflowHook`.  
+   **Réponse : Fonction écrite et utilisée pour afficher un message ou clignoter la LED en cas de dépassement de pile : tableau rempli itérativement avec un printf à chaque étape pour observer à quel moment on a un overflow.**
+
+4. Forcez une tâche à dépasser sa pile pour tester.  
+   *vérif. prof. OK*
+
+5. Quels sont les autres hooks de FreeRTOS et leur utilité ?  
    **Réponse :**
+   - `vApplicationIdleHook` : appelée quand aucune tâche n’est active.
+   - `vApplicationMallocFailedHook` : appelée lors d’un échec d’allocation.
+   - `vApplicationTickHook` : appelée à chaque tick, si activée.
 
-##### 3.4 Affichage des statistiques dans le shell
-6. Écrivez une fonction pour afficher les statistiques dans le terminal.  
-   **Réponse :**
+#### 3.3 Statistiques dans l’IDE
 
----
+1. Activez dans CubeMX :
+   - `GENERATE_RUN_TIME_STATS`
+   - `USE_TRACE_FACILITY`
+   - `USE_STATS_FORMATTING_FUNCTIONS`  
 
-#### 4. Écriture d’un driver
+2. Générez, compilez, lancez en debug.  
 
-##### 4.1 Interfacer l’ADXL345
-1. Quelles sont les valeurs à mettre dans les registres `INT_ENABLE` et `POWER_CTL` pour démarrer la mesure ?  
-   **Réponse :**
+3. Affichez `FreeRTOS Task List` dans STM32CubeIDE.  
 
-2. Expliquez comment lire et afficher les valeurs de l’accéléromètre.  
-   **Réponse :**
+4. Lancez et mettez en pause pour visualiser les stats.  
+   *vérif. prof. OK*
 
-##### 4.2 Driver SPI
-3. Expliquez le fonctionnement des fonctions `drv_spi_init`, `drv_spi_write` et `drv_spi_read`.  
-   **Réponse :**
+5. Activez le "Toggle Stack Checking" pour voir l'utilisation pile. 
 
-4. Testez et validez le driver SPI.  
-   **Réponse :**
+6. Implémentez le timer :
 
----
+​	**Réponse : Deux fonctions implémentées pour mesurer le temps CPU via un timer.**
 
-**Note :** Complétez les réponses au fur et à mesure de votre progression dans le TP.
+1. Affichez sémaphores et queues dans le debug IDE.
+   *vérif. prof. OK*
+2. Créez deux tâches se partageant une queue ou un sémaphore.
+3. Nommez-les avec `vQueueAddToRegistry`.
+    *vérif. prof. KO*
 
+#### 3.4 Affichage des statistiques dans le shell
+
+1. Écrivez une fonction shell pour afficher les stats FreeRTOS.
+    **Réponse : Utilisation de `vTaskGetRunTimeStats()` et `vTaskList()` dans une commande shell dédiée.**
+    *vérif. prof. OK*
